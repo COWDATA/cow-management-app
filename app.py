@@ -261,10 +261,8 @@ else:
 
     display_df = display_df.sort_values("分娩後日数", ascending=True)
 
-    st.dataframe(
-        display_df.style.apply(color_by_days, axis=1),
-        use_container_width=True,
-        hide_index=True,
+    st.table(
+    display_df.style.apply(color_by_days, axis=1)
     )
 
     st.subheader("色区分ごとの頭数")
