@@ -54,21 +54,78 @@ def save_cows(df):
 
 
 # =========================
-# 分娩後日数・状態判定
+# 分娩後日数・色分け判定
 # =========================
-def judge_status(days):
+def judge_color_group(days):
     if pd.isna(days):
         return "日付未入力"
+
     if days < 0:
         return "分娩日前"
-    elif days <= 7:
-        return "分娩直後・要注意"
-    elif days <= 21:
-        return "産後観察"
-    elif days <= 60:
-        return "繁殖準備・回復期"
+    elif days <= 13:
+        return "ピンク"
+    elif days <= 20:
+        return "緑"
+    elif days <= 27:
+        return "黄"
+    elif days <= 59:
+        return "赤"
+    elif days <= 119:
+        return "ピンク"
+    elif days <= 179:
+        return "緑"
+    elif days <= 209:
+        return "黄"
     else:
-        return "通常管理"
+        return "赤"
+
+
+def judge_management_value(days):
+    if pd.isna(days):
+        return ""
+
+    if days < 0:
+        return ""
+    elif days <= 13:
+        return "0.5"
+    elif days <= 20:
+        return "1.5"
+    elif days <= 27:
+        return "2.5"
+    elif days <= 59:
+        return "3.5"
+    elif days <= 119:
+        return "3.5〜2.5"
+    elif days <= 179:
+        return "2.5〜1.5"
+    elif days <= 209:
+        return "0.5"
+    else:
+        return "-"
+
+
+def judge_day_range(days):
+    if pd.isna(days):
+        return "日付未入力"
+
+    if days < 0:
+        return "分娩日前"
+    elif days <= 13:
+        return "0〜13日"
+    elif days <= 20:
+        return "14〜20日"
+    elif days <= 27:
+        return "21〜27日"
+    elif days <= 59:
+        return "28〜59日"
+    elif days <= 119:
+        return "60〜119日"
+    elif days <= 179:
+        return "120〜179日"
+    elif days <= 209:
+        return "180〜209日"
+    else:
+        return "210日〜"
 
 
 def add_calculated_columns(df):
@@ -76,29 +133,33 @@ def add_calculated_columns(df):
     df = df.copy()
 
     df["分娩日"] = pd.to_datetime(df["分娩日"], errors="coerce").dt.date
+
     df["分娩後日数"] = df["分娩日"].apply(
         lambda x: (today - x).days if pd.notna(x) else None
     )
-    df["状態"] = df["分娩後日数"].apply(judge_status)
+
+    df["日数区分"] = df["分娩後日数"].apply(judge_day_range)
+    df["色区分"] = df["分娩後日数"].apply(judge_color_group)
+    df["管理値"] = df["分娩後日数"].apply(judge_management_value)
 
     return df
 
 
 def color_by_days(row):
-    days = row["分娩後日数"]
+    color_group = row["色区分"]
 
-    if pd.isna(days):
-        color = "background-color: #ffffff"
-    elif days < 0:
-        color = "background-color: #d9d9d9"
-    elif days <= 7:
-        color = "background-color: #ff9999"
-    elif days <= 21:
-        color = "background-color: #ffd699"
-    elif days <= 60:
-        color = "background-color: #ffff99"
-    else:
+    if color_group == "ピンク":
+        color = "background-color: #ffc0cb"
+    elif color_group == "緑":
         color = "background-color: #b6f2b6"
+    elif color_group == "黄":
+        color = "background-color: #ffff99"
+    elif color_group == "赤":
+        color = "background-color: #ff9999"
+    elif color_group == "分娩日前":
+        color = "background-color: #d9d9d9"
+    else:
+        color = "background-color: #ffffff"
 
     return [color] * len(row)
 
@@ -109,6 +170,23 @@ def color_by_days(row):
 st.title("牛の分娩後日数管理アプリ")
 
 st.info("分娩日を保存し、分娩後日数は今日の日付から自動計算します。")
+
+st.markdown(
+    """
+### 色分けルール
+
+| 分娩後日数 | 色 | 管理値 |
+|---:|---|---|
+| 0〜13日 | ピンク | 0.5 |
+| 14〜20日 | 緑 | 1.5 |
+| 21〜27日 | 黄 | 2.5 |
+| 28〜59日 | 赤 | 3.5 |
+| 60〜119日 | ピンク | 3.5〜2.5 |
+| 120〜179日 | 緑 | 2.5〜1.5 |
+| 180〜209日 | 黄 | 0.5 |
+| 210日〜 | 赤 | - |
+"""
+)
 
 # 読み込み
 try:
@@ -196,10 +274,15 @@ else:
         hide_index=True,
     )
 
-    st.subheader("状態ごとの頭数")
-    count_df = display_df["状態"].value_counts().reset_index()
-    count_df.columns = ["状態", "頭数"]
+    st.subheader("色区分ごとの頭数")
+    count_df = display_df["色区分"].value_counts().reset_index()
+    count_df.columns = ["色区分", "頭数"]
     st.dataframe(count_df, use_container_width=True, hide_index=True)
+
+    st.subheader("管理値ごとの頭数")
+    value_count_df = display_df["管理値"].value_counts().reset_index()
+    value_count_df.columns = ["管理値", "頭数"]
+    st.dataframe(value_count_df, use_container_width=True, hide_index=True)
 
 
 # =========================
