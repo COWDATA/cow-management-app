@@ -68,16 +68,14 @@ def judge_color_group(days):
         return "緑"
     elif days <= 27:
         return "黄"
-    elif days <= 59:
-        return "赤"
     elif days <= 119:
-        return "ピンク"
-    elif days <= 179:
-        return "緑"
-    elif days <= 209:
-        return "黄"
-    else:
         return "赤"
+    elif days <= 179:
+        return "黄"
+    elif days <= 209:
+        return "緑"
+    else:
+        return "ピンク"
 
 
 def judge_management_value(days):
@@ -92,16 +90,14 @@ def judge_management_value(days):
         return "1.5"
     elif days <= 27:
         return "2.5"
-    elif days <= 59:
-        return "3.5"
     elif days <= 119:
-        return "3.5〜2.5"
+        return "3.5"
     elif days <= 179:
-        return "2.5〜1.5"
+        return "3.5〜2.5"
     elif days <= 209:
-        return "0.5"
+        return "2.5〜1.5"
     else:
-        return "-"
+        return "0.5"
 
 
 def judge_day_range(days):
@@ -116,10 +112,8 @@ def judge_day_range(days):
         return "14〜20日"
     elif days <= 27:
         return "21〜27日"
-    elif days <= 59:
-        return "28〜59日"
     elif days <= 119:
-        return "60〜119日"
+        return "28〜119日"
     elif days <= 179:
         return "120〜179日"
     elif days <= 209:
@@ -180,11 +174,10 @@ st.markdown(
 | 0〜13日 | ピンク | 0.5 |
 | 14〜20日 | 緑 | 1.5 |
 | 21〜27日 | 黄 | 2.5 |
-| 28〜59日 | 赤 | 3.5 |
-| 60〜119日 | ピンク | 3.5〜2.5 |
-| 120〜179日 | 緑 | 2.5〜1.5 |
-| 180〜209日 | 黄 | 0.5 |
-| 210日〜 | 赤 | - |
+| 28〜119日 | 赤 | 3.5 |
+| 120〜179日 | ピンク | 3.5〜2.5 |
+| 180〜209日 | 緑 | 2.5〜1.5 |
+| 210日〜 | 黄 | 0.5 |
 """
 )
 
