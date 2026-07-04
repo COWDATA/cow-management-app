@@ -15,17 +15,20 @@ SHEET_NAME = "cows"
 st.markdown(
     """
 <style>
+/* 表本体 */
 .cow-grid {
     display: grid;
     grid-template-columns: 0.9fr 0.7fr 1.2fr 0.9fr 1.1fr 0.8fr 1.2fr;
     gap: 0px;
-    margin-bottom: 4px;
+    margin: 0px;
+    padding: 0px;
 }
 
+/* 表のセル */
 .cow-cell {
-    padding: 8px 4px;
+    padding: 6px 4px;
     border: 1px solid #dddddd;
-    min-height: 38px;
+    min-height: 36px;
     text-align: center;
     font-size: 14px;
     box-sizing: border-box;
@@ -35,15 +38,42 @@ st.markdown(
     justify-content: center;
 }
 
+/* ヘッダー */
 .cow-header {
     background-color: #eeeeee;
     font-weight: bold;
 }
 
+/* Streamlitカラムの横方向の隙間 */
+div[data-testid="stHorizontalBlock"] {
+    gap: 0.75rem;
+    margin-bottom: 0px !important;
+}
+
+/* Markdownの上下余白を詰める */
+div[data-testid="stMarkdownContainer"] {
+    margin-bottom: 0px !important;
+}
+
+/* ボタン周りの余白を詰める */
+div[data-testid="stButton"] {
+    margin: 0px !important;
+    padding: 0px !important;
+}
+
+/* リセットボタン */
 div[data-testid="stButton"] > button {
-    height: 38px;
-    padding: 4px 10px;
-    margin-top: 0px;
+    height: 36px;
+    min-height: 36px;
+    padding: 0px 8px;
+    margin: 0px !important;
+    line-height: 1;
+    font-size: 16px;
+}
+
+/* Streamlitの要素間余白を少し詰める */
+div[data-testid="stVerticalBlock"] {
+    gap: 0.25rem;
 }
 </style>
 """,
@@ -408,7 +438,7 @@ else:
 
             with row_right:
                 if st.button(
-                    "0日",
+                    "↺",
                     key=f"reset_{row['個体番号']}",
                     help=f"{row['個体番号']} の分娩日を今日に更新します",
                 ):
