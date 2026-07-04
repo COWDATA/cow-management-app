@@ -3,6 +3,7 @@ import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import date
+from html import escape
 
 st.set_page_config(page_title="牛の分娩後日数管理", layout="wide")
 
@@ -13,39 +14,39 @@ SHEET_NAME = "cows"
 # =========================
 st.markdown(
     """
-    <style>
-    .cow-grid {
-        display: grid;
-        grid-template-columns: 0.9fr 0.7fr 1.2fr 0.9fr 1.1fr 0.8fr 1.2fr;
-        gap: 0px;
-        margin-bottom: 4px;
-    }
+<style>
+.cow-grid {
+    display: grid;
+    grid-template-columns: 0.9fr 0.7fr 1.2fr 0.9fr 1.1fr 0.8fr 1.2fr;
+    gap: 0px;
+    margin-bottom: 4px;
+}
 
-    .cow-cell {
-        padding: 8px 4px;
-        border: 1px solid #dddddd;
-        min-height: 38px;
-        text-align: center;
-        font-size: 14px;
-        box-sizing: border-box;
-        word-break: break-word;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
+.cow-cell {
+    padding: 8px 4px;
+    border: 1px solid #dddddd;
+    min-height: 38px;
+    text-align: center;
+    font-size: 14px;
+    box-sizing: border-box;
+    word-break: break-word;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
-    .cow-header {
-        background-color: #eeeeee;
-        font-weight: bold;
-    }
+.cow-header {
+    background-color: #eeeeee;
+    font-weight: bold;
+}
 
-    div[data-testid="stButton"] > button {
-        height: 38px;
-        padding: 4px 10px;
-        margin-top: 0px;
-    }
-    </style>
-    """,
+div[data-testid="stButton"] > button {
+    height: 38px;
+    padding: 4px 10px;
+    margin-top: 0px;
+}
+</style>
+""",
     unsafe_allow_html=True,
 )
 
@@ -196,6 +197,19 @@ def get_background_color(color_group):
         return "#ffffff"
 
 
+def make_cell(value, bg_color, header=False, bold=False):
+    safe_value = escape(str(value))
+    classes = "cow-cell cow-header" if header else "cow-cell"
+    font_weight = "bold" if bold else "normal"
+
+    return (
+        f'<div class="{classes}" '
+        f'style="background-color:{bg_color}; font-weight:{font_weight};">'
+        f'{safe_value}'
+        f'</div>'
+    )
+
+
 def render_table_header():
     headers = [
         "個体番号",
@@ -208,10 +222,8 @@ def render_table_header():
     ]
 
     cells = "".join(
-        [
-            f'<div class="cow-cell cow-header">{header}</div>'
-            for header in headers
-        ]
+        make_cell(header, "#eeeeee", header=True, bold=True)
+        for header in headers
     )
 
     return f'<div class="cow-grid">{cells}</div>'
@@ -229,14 +241,8 @@ def render_table_row(row, bg_color):
     ]
 
     cells = "".join(
-        [
-            f"""
-            <div class="cow-cell" style="background-color: {bg_color};">
-                {value}
-            </div>
-            """
-            for value in values
-        ]
+        make_cell(value, bg_color, bold=(i in [0, 5]))
+        for i, value in enumerate(values)
     )
 
     return f'<div class="cow-grid">{cells}</div>'
@@ -346,9 +352,7 @@ calc_df = add_calculated_columns(cows_df)
 if len(calc_df) == 0:
     st.warning("まだ牛が登録されていません。")
 else:
-    # =========================
     # 群の絞り込み
-    # =========================
     groups = ["全群"] + sorted(calc_df["群"].dropna().astype(str).unique().tolist())
     selected_group = st.selectbox("表示する群", groups)
 
@@ -357,12 +361,11 @@ else:
     else:
         display_df = calc_df.copy()
 
-    # =========================
     # 個体番号検索
-    # =========================
     search_id = st.text_input(
         "個体番号で検索",
         placeholder="例：8353",
+        key="cow_id_search",
     )
 
     if search_id.strip() != "":
@@ -379,31 +382,19 @@ else:
     if len(display_df) == 0:
         st.warning("該当する個体番号がありません。")
     else:
-        # =========================
         # ヘッダー
-        # 左：表、右：リセットボタン列
-        # =========================
         header_left, header_right = st.columns([8.2, 1.0], gap="large")
 
         with header_left:
-            st.markdown(
-                render_table_header(),
-                unsafe_allow_html=True,
-            )
+            st.markdown(render_table_header(), unsafe_allow_html=True)
 
         with header_right:
             st.markdown(
-                """
-                <div class="cow-cell cow-header">
-                    リセット
-                </div>
-                """,
+                '<div class="cow-cell cow-header">リセット</div>',
                 unsafe_allow_html=True,
             )
 
-        # =========================
         # データ行
-        # =========================
         for _, row in display_df.iterrows():
             bg_color = get_background_color(row["色区分"])
 
