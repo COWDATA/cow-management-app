@@ -139,23 +139,49 @@ def add_calculated_columns(df):
     return df
 
 
-def color_by_days(row):
-    color_group = row["色区分"]
-
+def get_background_color(color_group):
     if color_group == "ピンク":
-        color = "background-color: #ffc0cb"
+        return "#ffc0cb"
     elif color_group == "緑":
-        color = "background-color: #b6f2b6"
+        return "#b6f2b6"
     elif color_group == "黄":
-        color = "background-color: #ffff99"
+        return "#ffff99"
     elif color_group == "赤":
-        color = "background-color: #ff9999"
+        return "#ff9999"
     elif color_group == "分娩日前":
-        color = "background-color: #d9d9d9"
+        return "#d9d9d9"
     else:
-        color = "background-color: #ffffff"
+        return "#ffffff"
 
-    return [color] * len(row)
+
+def cell_html(value, bg_color, bold=False):
+    font_weight = "bold" if bold else "normal"
+
+    return f"""
+    <div style="
+        background-color: {bg_color};
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid #dddddd;
+        min-height: 38px;
+        font-weight: {font_weight};
+        text-align: center;
+        font-size: 14px;
+    ">
+        {value}
+    </div>
+    """
+
+
+def reset_calving_date(cows_df, cow_id):
+    updated_df = cows_df.copy()
+
+    updated_df.loc[
+        updated_df["個体番号"].astype(str) == str(cow_id),
+        "分娩日"
+    ] = str(date.today())
+
+    save_cows(updated_df)
 
 
 # =========================
@@ -242,55 +268,6 @@ st.divider()
 
 
 # =========================
-# 分娩後日数リセット
-# =========================
-st.header("分娩後日数リセット")
-
-st.write("分娩が新しく来た牛を選んでボタンを押すと、分娩日が今日に更新され、分娩後日数が0日になります。")
-
-if len(cows_df) > 0:
-    reset_id = st.selectbox(
-        "リセットする個体番号",
-        cows_df["個体番号"].astype(str).tolist(),
-        key="reset_id_selectbox",
-    )
-
-    reset_target = cows_df[cows_df["個体番号"].astype(str) == str(reset_id)].copy()
-
-    if len(reset_target) > 0:
-        current_calving_date = reset_target.iloc[0]["分娩日"]
-        st.write(f"現在の分娩日：{current_calving_date}")
-        st.write(f"更新後の分娩日：{date.today()}")
-
-    confirm_reset = st.checkbox(
-        "この牛の分娩日を今日に更新することを確認しました",
-        key="confirm_reset_checkbox",
-    )
-
-    if st.button("分娩後日数を0日にリセットする"):
-        if not confirm_reset:
-            st.error("確認チェックを入れてから実行してください。")
-        else:
-            updated_df = cows_df.copy()
-            updated_df.loc[
-                updated_df["個体番号"].astype(str) == str(reset_id),
-                "分娩日"
-            ] = str(date.today())
-
-            try:
-                save_cows(updated_df)
-                st.success(f"{reset_id} の分娩日を今日に更新しました。分娩後日数は0日になります。")
-                st.rerun()
-            except Exception as e:
-                st.error("リセットに失敗しました。")
-                st.exception(e)
-else:
-    st.info("リセットできる牛がいません。")
-
-st.divider()
-
-
-# =========================
 # 一覧表示
 # =========================
 st.header("全頭一覧")
@@ -333,14 +310,88 @@ else:
     if len(display_df) == 0:
         st.warning("該当する個体番号がありません。")
     else:
-        st.table(
-            display_df.style.apply(color_by_days, axis=1)
-        )
+        # 表のヘッダー
+        header_cols = st.columns([1.2, 1.0, 1.4, 1.1, 1.3, 1.0, 1.5, 1.1])
 
-        st.subheader("色区分ごとの頭数")
-        count_df = display_df["色区分"].value_counts().reset_index()
-        count_df.columns = ["色区分", "頭数"]
-        st.dataframe(count_df, use_container_width=True, hide_index=True)
+        headers = [
+            "個体番号",
+            "群",
+            "分娩日",
+            "分娩後日数",
+            "日数区分",
+            "管理値",
+            "メモ",
+            "リセット",
+        ]
+
+        for col, header in zip(header_cols, headers):
+            with col:
+                st.markdown(
+                    cell_html(header, "#eeeeee", bold=True),
+                    unsafe_allow_html=True,
+                )
+
+        # 表の中身
+        for _, row in display_df.iterrows():
+            bg_color = get_background_color(row["色区分"])
+
+            row_cols = st.columns([1.2, 1.0, 1.4, 1.1, 1.3, 1.0, 1.5, 1.1])
+
+            with row_cols[0]:
+                st.markdown(
+                    cell_html(row["個体番号"], bg_color, bold=True),
+                    unsafe_allow_html=True,
+                )
+
+            with row_cols[1]:
+                st.markdown(
+                    cell_html(row["群"], bg_color),
+                    unsafe_allow_html=True,
+                )
+
+            with row_cols[2]:
+                st.markdown(
+                    cell_html(row["分娩日"], bg_color),
+                    unsafe_allow_html=True,
+                )
+
+            with row_cols[3]:
+                st.markdown(
+                    cell_html(row["分娩後日数"], bg_color),
+                    unsafe_allow_html=True,
+                )
+
+            with row_cols[4]:
+                st.markdown(
+                    cell_html(row["日数区分"], bg_color),
+                    unsafe_allow_html=True,
+                )
+
+            with row_cols[5]:
+                st.markdown(
+                    cell_html(row["管理値"], bg_color, bold=True),
+                    unsafe_allow_html=True,
+                )
+
+            with row_cols[6]:
+                st.markdown(
+                    cell_html(row["メモ"], bg_color),
+                    unsafe_allow_html=True,
+                )
+
+            with row_cols[7]:
+                if st.button(
+                    "0日",
+                    key=f"reset_{row['個体番号']}",
+                    help=f"{row['個体番号']} の分娩日を今日に更新します",
+                ):
+                    try:
+                        reset_calving_date(cows_df, row["個体番号"])
+                        st.success(f"{row['個体番号']} の分娩後日数を0日にリセットしました。")
+                        st.rerun()
+                    except Exception as e:
+                        st.error("リセットに失敗しました。")
+                        st.exception(e)
 
         st.subheader("管理値ごとの頭数")
         value_count_df = display_df["管理値"].value_counts().reset_index()
