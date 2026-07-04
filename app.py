@@ -175,7 +175,7 @@ st.markdown(
 | 14〜20日 | 緑 | 1.5 |
 | 21〜27日 | 黄 | 2.5 |
 | 28〜119日 | 赤 | 3.5 |
-| 120〜179日 | 黄色 | 3.5〜2.5 |
+| 120〜179日 | 黄 | 3.5〜2.5 |
 | 180〜209日 | 緑 | 2.5〜1.5 |
 | 210日〜 | ピンク | 0.5 |
 """
@@ -251,6 +251,9 @@ calc_df = add_calculated_columns(cows_df)
 if len(calc_df) == 0:
     st.warning("まだ牛が登録されていません。")
 else:
+    # =========================
+    # 群の絞り込み
+    # =========================
     groups = ["全群"] + sorted(calc_df["群"].dropna().astype(str).unique().tolist())
     selected_group = st.selectbox("表示する群", groups)
 
@@ -259,21 +262,41 @@ else:
     else:
         display_df = calc_df.copy()
 
-    display_df = display_df.sort_values("分娩後日数", ascending=True)
-
-    st.table(
-    display_df.style.apply(color_by_days, axis=1)
+    # =========================
+    # 個体番号検索
+    # =========================
+    search_id = st.text_input(
+        "個体番号で検索",
+        placeholder="例：8353",
     )
 
-    st.subheader("色区分ごとの頭数")
-    count_df = display_df["色区分"].value_counts().reset_index()
-    count_df.columns = ["色区分", "頭数"]
-    st.dataframe(count_df, use_container_width=True, hide_index=True)
+    if search_id.strip() != "":
+        display_df = display_df[
+            display_df["個体番号"]
+            .astype(str)
+            .str.contains(search_id.strip(), case=False, na=False)
+        ].copy()
 
-    st.subheader("管理値ごとの頭数")
-    value_count_df = display_df["管理値"].value_counts().reset_index()
-    value_count_df.columns = ["管理値", "頭数"]
-    st.dataframe(value_count_df, use_container_width=True, hide_index=True)
+    display_df = display_df.sort_values("分娩後日数", ascending=True)
+
+    st.write(f"表示頭数：{len(display_df)}頭")
+
+    if len(display_df) == 0:
+        st.warning("該当する個体番号がありません。")
+    else:
+        st.table(
+            display_df.style.apply(color_by_days, axis=1)
+        )
+
+        st.subheader("色区分ごとの頭数")
+        count_df = display_df["色区分"].value_counts().reset_index()
+        count_df.columns = ["色区分", "頭数"]
+        st.dataframe(count_df, use_container_width=True, hide_index=True)
+
+        st.subheader("管理値ごとの頭数")
+        value_count_df = display_df["管理値"].value_counts().reset_index()
+        value_count_df.columns = ["管理値", "頭数"]
+        st.dataframe(value_count_df, use_container_width=True, hide_index=True)
 
 
 # =========================
