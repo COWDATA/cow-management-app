@@ -242,6 +242,55 @@ st.divider()
 
 
 # =========================
+# 分娩後日数リセット
+# =========================
+st.header("分娩後日数リセット")
+
+st.write("分娩が新しく来た牛を選んでボタンを押すと、分娩日が今日に更新され、分娩後日数が0日になります。")
+
+if len(cows_df) > 0:
+    reset_id = st.selectbox(
+        "リセットする個体番号",
+        cows_df["個体番号"].astype(str).tolist(),
+        key="reset_id_selectbox",
+    )
+
+    reset_target = cows_df[cows_df["個体番号"].astype(str) == str(reset_id)].copy()
+
+    if len(reset_target) > 0:
+        current_calving_date = reset_target.iloc[0]["分娩日"]
+        st.write(f"現在の分娩日：{current_calving_date}")
+        st.write(f"更新後の分娩日：{date.today()}")
+
+    confirm_reset = st.checkbox(
+        "この牛の分娩日を今日に更新することを確認しました",
+        key="confirm_reset_checkbox",
+    )
+
+    if st.button("分娩後日数を0日にリセットする"):
+        if not confirm_reset:
+            st.error("確認チェックを入れてから実行してください。")
+        else:
+            updated_df = cows_df.copy()
+            updated_df.loc[
+                updated_df["個体番号"].astype(str) == str(reset_id),
+                "分娩日"
+            ] = str(date.today())
+
+            try:
+                save_cows(updated_df)
+                st.success(f"{reset_id} の分娩日を今日に更新しました。分娩後日数は0日になります。")
+                st.rerun()
+            except Exception as e:
+                st.error("リセットに失敗しました。")
+                st.exception(e)
+else:
+    st.info("リセットできる牛がいません。")
+
+st.divider()
+
+
+# =========================
 # 一覧表示
 # =========================
 st.header("全頭一覧")
@@ -306,7 +355,11 @@ st.divider()
 st.header("登録削除")
 
 if len(cows_df) > 0:
-    delete_id = st.selectbox("削除する個体番号", cows_df["個体番号"].astype(str).tolist())
+    delete_id = st.selectbox(
+        "削除する個体番号",
+        cows_df["個体番号"].astype(str).tolist(),
+        key="delete_id_selectbox",
+    )
 
     if st.button("この牛を削除する"):
         updated_df = cows_df[cows_df["個体番号"].astype(str) != str(delete_id)].copy()
