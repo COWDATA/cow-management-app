@@ -9,6 +9,48 @@ st.set_page_config(page_title="牛の分娩後日数管理", layout="wide")
 SHEET_NAME = "cows"
 
 # =========================
+# 表示調整CSS
+# =========================
+st.markdown(
+    """
+    <style>
+    .cow-grid {
+        display: grid;
+        grid-template-columns: 0.9fr 0.7fr 1.2fr 0.9fr 1.1fr 0.8fr 1.2fr;
+        gap: 0px;
+        margin-bottom: 4px;
+    }
+
+    .cow-cell {
+        padding: 8px 4px;
+        border: 1px solid #dddddd;
+        min-height: 38px;
+        text-align: center;
+        font-size: 14px;
+        box-sizing: border-box;
+        word-break: break-word;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .cow-header {
+        background-color: #eeeeee;
+        font-weight: bold;
+    }
+
+    div[data-testid="stButton"] > button {
+        height: 38px;
+        padding: 4px 10px;
+        margin-top: 0px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# =========================
 # Google Sheets 接続
 # =========================
 @st.cache_resource
@@ -154,23 +196,50 @@ def get_background_color(color_group):
         return "#ffffff"
 
 
-def cell_html(value, bg_color, bold=False):
-    font_weight = "bold" if bold else "normal"
+def render_table_header():
+    headers = [
+        "個体番号",
+        "群",
+        "分娩日",
+        "分娩後日数",
+        "日数区分",
+        "管理値",
+        "メモ",
+    ]
 
-    return f"""
-    <div style="
-        background-color: {bg_color};
-        padding: 8px;
-        border-radius: 4px;
-        border: 1px solid #dddddd;
-        min-height: 38px;
-        font-weight: {font_weight};
-        text-align: center;
-        font-size: 14px;
-    ">
-        {value}
-    </div>
-    """
+    cells = "".join(
+        [
+            f'<div class="cow-cell cow-header">{header}</div>'
+            for header in headers
+        ]
+    )
+
+    return f'<div class="cow-grid">{cells}</div>'
+
+
+def render_table_row(row, bg_color):
+    values = [
+        row["個体番号"],
+        row["群"],
+        row["分娩日"],
+        row["分娩後日数"],
+        row["日数区分"],
+        row["管理値"],
+        row["メモ"],
+    ]
+
+    cells = "".join(
+        [
+            f"""
+            <div class="cow-cell" style="background-color: {bg_color};">
+                {value}
+            </div>
+            """
+            for value in values
+        ]
+    )
+
+    return f'<div class="cow-grid">{cells}</div>'
 
 
 def reset_calving_date(cows_df, cow_id):
@@ -310,76 +379,43 @@ else:
     if len(display_df) == 0:
         st.warning("該当する個体番号がありません。")
     else:
-        # 表のヘッダー
-        header_cols = st.columns([1.2, 1.0, 1.4, 1.1, 1.3, 1.0, 1.5, 1.1])
+        # =========================
+        # ヘッダー
+        # 左：表、右：リセットボタン列
+        # =========================
+        header_left, header_right = st.columns([8.2, 1.0], gap="large")
 
-        headers = [
-            "個体番号",
-            "群",
-            "分娩日",
-            "分娩後日数",
-            "日数区分",
-            "管理値",
-            "メモ",
-            "リセット",
-        ]
+        with header_left:
+            st.markdown(
+                render_table_header(),
+                unsafe_allow_html=True,
+            )
 
-        for col, header in zip(header_cols, headers):
-            with col:
-                st.markdown(
-                    cell_html(header, "#eeeeee", bold=True),
-                    unsafe_allow_html=True,
-                )
+        with header_right:
+            st.markdown(
+                """
+                <div class="cow-cell cow-header">
+                    リセット
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
-        # 表の中身
+        # =========================
+        # データ行
+        # =========================
         for _, row in display_df.iterrows():
             bg_color = get_background_color(row["色区分"])
 
-            row_cols = st.columns([1.2, 1.0, 1.4, 1.1, 1.3, 1.0, 1.5, 1.1])
+            row_left, row_right = st.columns([8.2, 1.0], gap="large")
 
-            with row_cols[0]:
+            with row_left:
                 st.markdown(
-                    cell_html(row["個体番号"], bg_color, bold=True),
+                    render_table_row(row, bg_color),
                     unsafe_allow_html=True,
                 )
 
-            with row_cols[1]:
-                st.markdown(
-                    cell_html(row["群"], bg_color),
-                    unsafe_allow_html=True,
-                )
-
-            with row_cols[2]:
-                st.markdown(
-                    cell_html(row["分娩日"], bg_color),
-                    unsafe_allow_html=True,
-                )
-
-            with row_cols[3]:
-                st.markdown(
-                    cell_html(row["分娩後日数"], bg_color),
-                    unsafe_allow_html=True,
-                )
-
-            with row_cols[4]:
-                st.markdown(
-                    cell_html(row["日数区分"], bg_color),
-                    unsafe_allow_html=True,
-                )
-
-            with row_cols[5]:
-                st.markdown(
-                    cell_html(row["管理値"], bg_color, bold=True),
-                    unsafe_allow_html=True,
-                )
-
-            with row_cols[6]:
-                st.markdown(
-                    cell_html(row["メモ"], bg_color),
-                    unsafe_allow_html=True,
-                )
-
-            with row_cols[7]:
+            with row_right:
                 if st.button(
                     "0日",
                     key=f"reset_{row['個体番号']}",
