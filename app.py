@@ -15,39 +15,32 @@ SHEET_NAME = "cows"
 st.markdown(
     """
 <style>
-/* 表本体 */
-.cow-grid {
-    display: grid;
-    grid-template-columns: 0.9fr 0.7fr 1.2fr 0.9fr 1.1fr 0.8fr 1.2fr;
-    gap: 0px;
+/* 表全体 */
+.cow-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0px;
     margin: 0px;
     padding: 0px;
 }
 
 /* 表のセル */
-.cow-cell {
-    padding: 6px 4px;
+.cow-table th,
+.cow-table td {
     border: 1px solid #dddddd;
-    min-height: 36px;
+    padding: 6px 4px;
     text-align: center;
     font-size: 14px;
+    height: 34px;
+    line-height: 1.2;
     box-sizing: border-box;
     word-break: break-word;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 /* ヘッダー */
-.cow-header {
+.cow-table th {
     background-color: #eeeeee;
     font-weight: bold;
-}
-
-/* Streamlitカラムの横方向の隙間 */
-div[data-testid="stHorizontalBlock"] {
-    gap: 0.75rem;
-    margin-bottom: 0px !important;
 }
 
 /* Markdownの上下余白を詰める */
@@ -55,25 +48,18 @@ div[data-testid="stMarkdownContainer"] {
     margin-bottom: 0px !important;
 }
 
-/* ボタン周りの余白を詰める */
-div[data-testid="stButton"] {
-    margin: 0px !important;
-    padding: 0px !important;
-}
-
-/* リセットボタン */
-div[data-testid="stButton"] > button {
-    height: 36px;
-    min-height: 36px;
-    padding: 0px 8px;
-    margin: 0px !important;
-    line-height: 1;
-    font-size: 16px;
-}
-
 /* Streamlitの要素間余白を少し詰める */
 div[data-testid="stVerticalBlock"] {
-    gap: 0.25rem;
+    gap: 0.2rem;
+}
+
+/* ボタン */
+div[data-testid="stButton"] > button {
+    min-height: 36px;
+    padding: 4px 12px;
+    margin: 0px !important;
+    line-height: 1.2;
+    font-size: 15px;
 }
 </style>
 """,
@@ -227,55 +213,55 @@ def get_background_color(color_group):
         return "#ffffff"
 
 
-def make_cell(value, bg_color, header=False, bold=False):
-    safe_value = escape(str(value))
-    classes = "cow-cell cow-header" if header else "cow-cell"
-    font_weight = "bold" if bold else "normal"
-
-    return (
-        f'<div class="{classes}" '
-        f'style="background-color:{bg_color}; font-weight:{font_weight};">'
-        f'{safe_value}'
-        f'</div>'
-    )
-
-
-def render_table_header():
+def render_full_table(display_df):
     headers = [
         "個体番号",
         "群",
         "分娩日",
-        "分娩後日数",
-        "日数区分",
+        "分娩数",
+        "日分け",
         "管理値",
         "メモ",
     ]
 
-    cells = "".join(
-        make_cell(header, "#eeeeee", header=True, bold=True)
-        for header in headers
-    )
+    html = '<table class="cow-table">'
+    html += "<thead><tr>"
 
-    return f'<div class="cow-grid">{cells}</div>'
+    for header in headers:
+        html += f"<th>{escape(str(header))}</th>"
 
+    html += "</tr></thead>"
+    html += "<tbody>"
 
-def render_table_row(row, bg_color):
-    values = [
-        row["個体番号"],
-        row["群"],
-        row["分娩日"],
-        row["分娩後日数"],
-        row["日数区分"],
-        row["管理値"],
-        row["メモ"],
-    ]
+    for _, row in display_df.iterrows():
+        bg_color = get_background_color(row["色区分"])
 
-    cells = "".join(
-        make_cell(value, bg_color, bold=(i in [0, 5]))
-        for i, value in enumerate(values)
-    )
+        values = [
+            row["個体番号"],
+            row["群"],
+            row["分娩日"],
+            row["分娩後日数"],
+            row["日数区分"],
+            row["管理値"],
+            row["メモ"],
+        ]
 
-    return f'<div class="cow-grid">{cells}</div>'
+        html += "<tr>"
+
+        for i, value in enumerate(values):
+            font_weight = "bold" if i in [0, 5] else "normal"
+            html += (
+                f'<td style="background-color:{bg_color}; '
+                f'font-weight:{font_weight};">'
+                f'{escape(str(value))}'
+                f"</td>"
+            )
+
+        html += "</tr>"
+
+    html += "</tbody></table>"
+
+    return html
 
 
 def reset_calving_date(cows_df, cow_id):
@@ -414,19 +400,11 @@ else:
     if len(display_df) == 0:
         st.warning("該当する個体番号がありません。")
     else:
-        # =========================
-        # 通常の表表示
-        # リセット列は作らない
-        # =========================
-        st.markdown(render_table_header(), unsafe_allow_html=True)
-
-        for _, row in display_df.iterrows():
-            bg_color = get_background_color(row["色区分"])
-
-            st.markdown(
-                render_table_row(row, bg_color),
-                unsafe_allow_html=True,
-            )
+        # 表全体を1つのHTMLとして表示するので、行間が詰まる
+        st.markdown(
+            render_full_table(display_df),
+            unsafe_allow_html=True,
+        )
 
         # =========================
         # 検索したときだけリセットボタンを表示
@@ -480,6 +458,7 @@ else:
         value_count_df.columns = ["管理値", "頭数"]
         st.dataframe(value_count_df, use_container_width=True, hide_index=True)
 
+
 # =========================
 # 削除機能
 # =========================
@@ -505,3 +484,4 @@ if len(cows_df) > 0:
             st.exception(e)
 else:
     st.info("削除できる牛がいません。")
+    
