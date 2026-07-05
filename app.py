@@ -398,7 +398,9 @@ else:
         key="cow_id_search",
     )
 
-    if search_id.strip() != "":
+    search_active = search_id.strip() != ""
+
+    if search_active:
         display_df = display_df[
             display_df["個体番号"]
             .astype(str)
@@ -412,39 +414,62 @@ else:
     if len(display_df) == 0:
         st.warning("該当する個体番号がありません。")
     else:
-        # ヘッダー
-        header_left, header_right = st.columns([8.2, 1.0], gap="large")
+        # =========================
+        # 通常の表表示
+        # リセット列は作らない
+        # =========================
+        st.markdown(render_table_header(), unsafe_allow_html=True)
 
-        with header_left:
-            st.markdown(render_table_header(), unsafe_allow_html=True)
-
-        with header_right:
-            st.markdown(
-                '<div class="cow-cell cow-header">リセット</div>',
-                unsafe_allow_html=True,
-            )
-
-        # データ行
         for _, row in display_df.iterrows():
             bg_color = get_background_color(row["色区分"])
 
-            row_left, row_right = st.columns([8.2, 1.0], gap="large")
+            st.markdown(
+                render_table_row(row, bg_color),
+                unsafe_allow_html=True,
+            )
 
-            with row_left:
-                st.markdown(
-                    render_table_row(row, bg_color),
-                    unsafe_allow_html=True,
-                )
+        # =========================
+        # 検索したときだけリセットボタンを表示
+        # =========================
+        if search_active:
+            st.divider()
+            st.subheader("検索した個体番号のリセット")
 
-            with row_right:
+            reset_candidates = display_df["個体番号"].astype(str).tolist()
+
+            if len(reset_candidates) == 1:
+                reset_id = reset_candidates[0]
+
+                st.write(f"対象個体番号：**{reset_id}**")
+
                 if st.button(
-                    "↺",
-                    key=f"reset_{row['個体番号']}",
-                    help=f"{row['個体番号']} の分娩日を今日に更新します",
+                    "この個体番号をリセット",
+                    key=f"reset_search_{reset_id}",
                 ):
                     try:
-                        reset_calving_date(cows_df, row["個体番号"])
-                        st.success(f"{row['個体番号']} の分娩後日数を0日にリセットしました。")
+                        reset_calving_date(cows_df, reset_id)
+                        st.success(f"{reset_id} の分娩後日数を0日にリセットしました。")
+                        st.rerun()
+                    except Exception as e:
+                        st.error("リセットに失敗しました。")
+                        st.exception(e)
+
+            elif len(reset_candidates) > 1:
+                st.warning("複数の個体番号が該当しています。リセットする個体番号を選んでください。")
+
+                reset_id = st.selectbox(
+                    "リセットする個体番号",
+                    reset_candidates,
+                    key="reset_candidate_selectbox",
+                )
+
+                if st.button(
+                    "この個体番号をリセット",
+                    key=f"reset_search_{reset_id}",
+                ):
+                    try:
+                        reset_calving_date(cows_df, reset_id)
+                        st.success(f"{reset_id} の分娩後日数を0日にリセットしました。")
                         st.rerun()
                     except Exception as e:
                         st.error("リセットに失敗しました。")
@@ -454,7 +479,6 @@ else:
         value_count_df = display_df["管理値"].value_counts().reset_index()
         value_count_df.columns = ["管理値", "頭数"]
         st.dataframe(value_count_df, use_container_width=True, hide_index=True)
-
 
 # =========================
 # 削除機能
