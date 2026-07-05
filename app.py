@@ -187,13 +187,28 @@ def add_calculated_columns(df):
 
     df["分娩日"] = pd.to_datetime(df["分娩日"], errors="coerce").dt.date
 
+    # 今日の分娩後日数
     df["分娩後日数"] = df["分娩日"].apply(
         lambda x: (today - x).days if pd.notna(x) else None
     )
 
+    # 昨日の分娩後日数
+    df["昨日の分娩後日数"] = df["分娩後日数"].apply(
+        lambda x: x - 1 if pd.notna(x) else None
+    )
+
+    # 今日の区分
     df["日数区分"] = df["分娩後日数"].apply(judge_day_range)
     df["色区分"] = df["分娩後日数"].apply(judge_color_group)
     df["管理値"] = df["分娩後日数"].apply(judge_management_value)
+
+    # 昨日の区分
+    df["昨日の日数区分"] = df["昨日の分娩後日数"].apply(judge_day_range)
+    df["昨日の色区分"] = df["昨日の分娩後日数"].apply(judge_color_group)
+    df["昨日の管理値"] = df["昨日の分娩後日数"].apply(judge_management_value)
+
+    # 昨日から今日で色が変わったか
+    df["色変化"] = df["昨日の色区分"] != df["色区分"]
 
     return df
 
@@ -218,8 +233,8 @@ def render_full_table(display_df):
         "個体番号",
         "群",
         "分娩日",
-        "分娩数",
-        "日分け",
+        "分娩後日数",
+        "日数区分",
         "管理値",
         "メモ",
     ]
@@ -252,6 +267,61 @@ def render_full_table(display_df):
             font_weight = "bold" if i in [0, 5] else "normal"
             html += (
                 f'<td style="background-color:{bg_color}; '
+                f'font-weight:{font_weight};">'
+                f'{escape(str(value))}'
+                f"</td>"
+            )
+
+        html += "</tr>"
+
+    html += "</tbody></table>"
+
+    return html
+
+
+def render_color_change_table(change_df):
+    headers = [
+        "個体番号",
+        "群",
+        "分娩日",
+        "昨日の日数",
+        "今日の日数",
+        "昨日の色",
+        "今日の色",
+        "昨日の管理値",
+        "今日の管理値",
+    ]
+
+    html = '<table class="cow-table">'
+    html += "<thead><tr>"
+
+    for header in headers:
+        html += f"<th>{escape(str(header))}</th>"
+
+    html += "</tr></thead>"
+    html += "<tbody>"
+
+    for _, row in change_df.iterrows():
+        today_bg_color = get_background_color(row["色区分"])
+
+        values = [
+            row["個体番号"],
+            row["群"],
+            row["分娩日"],
+            row["昨日の分娩後日数"],
+            row["分娩後日数"],
+            row["昨日の色区分"],
+            row["色区分"],
+            row["昨日の管理値"],
+            row["管理値"],
+        ]
+
+        html += "<tr>"
+
+        for i, value in enumerate(values):
+            font_weight = "bold" if i in [0, 6, 8] else "normal"
+            html += (
+                f'<td style="background-color:{today_bg_color}; '
                 f'font-weight:{font_weight};">'
                 f'{escape(str(value))}'
                 f"</td>"
@@ -359,11 +429,38 @@ st.divider()
 
 
 # =========================
+# 計算
+# =========================
+calc_df = add_calculated_columns(cows_df)
+
+
+# =========================
+# 本日色が変わった個体一覧
+# =========================
+st.header("本日、色が変わった個体一覧")
+
+if len(calc_df) == 0:
+    st.info("まだ牛が登録されていません。")
+else:
+    change_df = calc_df[calc_df["色変化"]].copy()
+    change_df = change_df.sort_values("分娩後日数", ascending=True)
+
+    if len(change_df) == 0:
+        st.success("本日、色が変わった個体はいません。")
+    else:
+        st.write(f"色が変わった頭数：{len(change_df)}頭")
+        st.markdown(
+            render_color_change_table(change_df),
+            unsafe_allow_html=True,
+        )
+
+st.divider()
+
+
+# =========================
 # 一覧表示
 # =========================
 st.header("全頭一覧")
-
-calc_df = add_calculated_columns(cows_df)
 
 if len(calc_df) == 0:
     st.warning("まだ牛が登録されていません。")
@@ -400,7 +497,6 @@ else:
     if len(display_df) == 0:
         st.warning("該当する個体番号がありません。")
     else:
-        # 表全体を1つのHTMLとして表示するので、行間が詰まる
         st.markdown(
             render_full_table(display_df),
             unsafe_allow_html=True,
@@ -484,4 +580,3 @@ if len(cows_df) > 0:
             st.exception(e)
 else:
     st.info("削除できる牛がいません。")
-    
