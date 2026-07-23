@@ -2,12 +2,19 @@ import streamlit as st
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
-from datetime import date
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from html import escape
 
 st.set_page_config(page_title="牛の分娩後日数管理", layout="wide")
 
 SHEET_NAME = "cows"
+JST = ZoneInfo("Asia/Tokyo")
+
+
+def get_today_jst():
+    """日本時間（JST）の今日の日付を返す。"""
+    return datetime.now(JST).date()
 
 # =========================
 # 表示調整CSS
@@ -182,7 +189,7 @@ def judge_day_range(days):
 
 
 def add_calculated_columns(df):
-    today = date.today()
+    today = get_today_jst()
     df = df.copy()
 
     df["分娩日"] = pd.to_datetime(df["分娩日"], errors="coerce").dt.date
@@ -340,7 +347,7 @@ def reset_calving_date(cows_df, cow_id):
     updated_df.loc[
         updated_df["個体番号"].astype(str) == str(cow_id),
         "分娩日"
-    ] = str(date.today())
+    ] = str(get_today_jst())
 
     save_cows(updated_df)
 
@@ -392,7 +399,7 @@ with st.form("add_cow_form"):
         group = st.text_input("群", value="1群")
 
     with col3:
-        calving_date = st.date_input("分娩日", value=date.today())
+        calving_date = st.date_input("分娩日", value=get_today_jst())
 
     memo = st.text_input("メモ")
 
